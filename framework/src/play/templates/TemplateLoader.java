@@ -1,5 +1,6 @@
 package play.templates;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import play.Logger;
 import play.Play;
+import play.mvc.Http;
 import play.vfs.VirtualFile;
 import play.exceptions.TemplateCompilationException;
 import play.exceptions.TemplateNotFoundException;
@@ -157,16 +159,36 @@ public class TemplateLoader {
     }
 
     /**
-     * Load a template
+     * Load a template, checking for a multi-tenant template for looking for a default play app template
      * @param path The path of the template (ex: Application/index.html)
+     * @param prefix the tenant to look for the view in for multi-tenancy (ex: siteA). If this is null, we'll try to use the current request domain as a prefix.
      * @return The executable template
      */
-    public static Template load(String path) {
+    public static Template loadMultiTenant(String path, String prefix) {
         Template template = null;
         for (VirtualFile vf : Play.templatesPath) {
             if (vf == null) {
                 continue;
             }
+
+            //try to load the milti-tenant template with the given prefix or the domain of the current request
+            if (prefix == null) {
+                Http.Request currentRequest = Http.Request.current().get();
+                if (currentRequest != null) {
+                    VirtualFile tf = vf.child(currentRequest.domain + File.separator + path);
+                    if (tf.exists()) {
+                        template = TemplateLoader.load(tf);
+                        break;
+                    }
+                }
+            } else {
+                VirtualFile tf = vf.child(prefix + File.separator + path);
+                if (tf.exists()) {
+                    template = TemplateLoader.load(tf);
+                    break;
+                }
+            }
+
             VirtualFile tf = vf.child(path);
             if (tf.exists()) {
                 template = TemplateLoader.load(tf);
@@ -193,6 +215,15 @@ public class TemplateLoader {
             }
         }
         return template;
+    }
+
+    /**
+     * Load a template
+     * @param path The path of the template (ex: Application/index.html)
+     * @return The executable template
+     */
+    public static Template load(String path) {    
+        return loadMultiTenant(path, null);
     }
 
     /**

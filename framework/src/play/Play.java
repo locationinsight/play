@@ -12,6 +12,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
+
 import play.cache.Cache;
 import play.classloading.ApplicationClasses;
 import play.classloading.ApplicationClassloader;
@@ -256,12 +258,17 @@ public class Play {
         javaPath.add(appRoot.child("app"));
         javaPath.add(appRoot.child("conf"));
 
+        templatesPath = new ArrayList<VirtualFile>();   
+
+        // Multi-tenant templates base directory (we'll check this first when loading templates with TemplateLoader)
+        String multiTenantViewsRoot = (String) Play.configuration.get("multiTenant.viewsRootDirectory");
+        if (StringUtils.isNotEmpty(multiTenantViewsRoot)) {
+            templatesPath.add(VirtualFile.open(new File(multiTenantViewsRoot)));
+        }
+
         // Build basic templates path
         if (appRoot.child("app/views").exists()) {
-            templatesPath = new ArrayList<VirtualFile>(2);
             templatesPath.add(appRoot.child("app/views"));
-        } else {
-            templatesPath = new ArrayList<VirtualFile>(1);
         }
 
         // Main route file
@@ -275,6 +282,8 @@ public class Play {
 
         // Load the templates from the framework after the one from the modules
         templatesPath.add(VirtualFile.open(new File(frameworkPath, "framework/templates")));
+
+        templatesPath = new ArrayList<VirtualFile>(templatesPath); //fix the size of templatesPath 
 
         // Enable a first classloader
         classloader = new ApplicationClassloader();
