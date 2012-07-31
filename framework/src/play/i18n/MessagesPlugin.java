@@ -2,7 +2,11 @@ package play.i18n;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+
+import org.apache.commons.lang.StringUtils;
 
 import play.Logger;
 import play.Play;
@@ -52,6 +56,41 @@ public class MessagesPlugin extends PlayPlugin {
             }     
             Messages.locales.put(locale, properties);
         }
+        
+        String multiTenantMessagesRoot = (String) Play.configuration.get("multiTenant.messagesRootDirectory");
+        if (StringUtils.isNotEmpty(multiTenantMessagesRoot)) {
+        	VirtualFile messageRoot = VirtualFile.open(new File(multiTenantMessagesRoot));
+        	if (messageRoot.isDirectory()) {
+        		for (VirtualFile child : messageRoot.list()) {
+					if (!child.isDirectory()) {
+						continue;
+					}
+					String name = child.getName();
+					VirtualFile defaultMessages = child.child("messages");
+					if (defaultMessages != null && defaultMessages.exists()) {
+						Properties properties = new Properties();
+						properties.putAll(read(defaultMessages));
+		                Messages.multiTenantDefaults.put(name, properties); 
+		            }
+					Map<String, Properties> localeMessages = null;
+					for (String locale : Play.langs) {
+						if (localeMessages == null) {
+							localeMessages = new HashMap<String, Properties>();
+						}
+			            Properties properties = new Properties();
+		                VirtualFile messages = child.child("messages." + locale);
+		                if (messages != null && messages.exists()) {
+		                    properties.putAll(read(messages)); 
+		                }
+		                localeMessages.put(locale, properties);
+					}
+					if (localeMessages != null) {
+						Messages.multiTenantLocales.put(name, localeMessages);
+					}
+				}
+        	}
+        }
+        
         lastLoading = System.currentTimeMillis();
     }
 
@@ -86,6 +125,28 @@ public class MessagesPlugin extends PlayPlugin {
                 }
             }
         }
-
+        String multiTenantMessagesRoot = (String) Play.configuration.get("multiTenant.messagesRootDirectory");
+        if (StringUtils.isNotEmpty(multiTenantMessagesRoot)) {
+        	VirtualFile messageRoot = VirtualFile.open(new File(multiTenantMessagesRoot));
+        	if (messageRoot.isDirectory()) {
+        		for (VirtualFile child : messageRoot.list()) {
+					if (!child.isDirectory()) {
+						continue;
+					}
+					VirtualFile defaultMessages = child.child("messages");
+					if (defaultMessages != null && defaultMessages.exists() && defaultMessages.lastModified() > lastLoading) {
+						onApplicationStart();
+	                    return;
+					}
+					for (String locale : Play.langs) {
+		                VirtualFile messages = child.child("messages." + locale);
+		                	if (messages.lastModified() > lastLoading) {
+							onApplicationStart();
+		                    return;
+		                }
+					}
+				}
+        	}
+        }
     }
 }

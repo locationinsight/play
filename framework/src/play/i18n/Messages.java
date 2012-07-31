@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import play.Logger;
 import play.Play;
 import play.data.binding.Binder;
+import play.mvc.Http;
 
 /**
  * I18n Helper
@@ -30,6 +31,10 @@ public class Messages {
 	static public Properties defaults;
 
     static public Map<String, Properties> locales = new HashMap<String, Properties>();
+    
+    static public Map<String, Properties> multiTenantDefaults = new HashMap<String, Properties>();
+    
+    static public Map<String, Map<String, Properties>> multiTenantLocales = new HashMap<String, Map<String, Properties>>();
 
     static Pattern recursive = Pattern.compile("&\\{(.*?)\\}");
 
@@ -90,7 +95,18 @@ public class Messages {
         if( key == null ) {
             return "";
         }
-        if (locales.containsKey(locale)) {
+        
+        Http.Request currentRequest = Http.Request.current().get();
+        if (currentRequest != null) {
+        	String domain = currentRequest.domain;
+        	if (multiTenantLocales.containsKey(domain) && multiTenantLocales.get(domain).containsKey(locale)) {
+        		value = multiTenantLocales.get(domain).get(locale).getProperty(key.toString());
+        	}
+        	if (value == null && multiTenantDefaults.containsKey(domain)) {
+        		value = multiTenantDefaults.get(domain).getProperty(key.toString());
+        	}
+        }
+        if (value == null && locales.containsKey(locale)) {
             value = locales.get(locale).getProperty(key.toString());
         }
         if (value == null) {
