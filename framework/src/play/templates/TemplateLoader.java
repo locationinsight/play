@@ -171,17 +171,8 @@ public class TemplateLoader {
                 continue;
             }
 
-            //try to load the milti-tenant template with the given prefix or the domain of the current request
-            if (prefix == null) {
-                Http.Request currentRequest = Http.Request.current().get();
-                if (currentRequest != null) {
-                    VirtualFile tf = vf.child(currentRequest.domain + File.separator + path);
-                    if (tf.exists()) {
-                        template = TemplateLoader.load(tf);
-                        break;
-                    }
-                }
-            } else {
+            //try to load the multi-tenant template with the given prefix or the domain of the current request
+            if (prefix != null) {
                 VirtualFile tf = vf.child(prefix + File.separator + path);
                 if (tf.exists()) {
                     template = TemplateLoader.load(tf);
@@ -222,7 +213,11 @@ public class TemplateLoader {
      * @param path The path of the template (ex: Application/index.html)
      * @return The executable template
      */
-    public static Template load(String path) {    
+    public static Template load(String path) {
+    	Http.Request currentRequest = Http.Request.current().get();
+        if (currentRequest != null) {
+        	return loadMultiTenant(path, currentRequest.domain);
+        }
         return loadMultiTenant(path, null);
     }
 
