@@ -15,17 +15,26 @@ public class RenderTemplate extends Result {
 
     private String name;
     private String content;
-
-    public RenderTemplate(Template template, Map<String, Object> args) {
+    private Integer statusCode;
+    
+    public RenderTemplate(Template template, Map<String, Object> args, Integer statusCode) {
         this.name = template.name;
         if (args.containsKey("out")) {
             throw new RuntimeException("Assertion failed! args shouldn't contain out");
         }
         this.content = template.render(args);
+        this.statusCode = statusCode;
+    }
+
+    public RenderTemplate(Template template, Map<String, Object> args) {
+        this(template, args, null);
     }
 
     public void apply(Request request, Response response) {
         try {
+        	if (statusCode != null) {
+            	response.status = statusCode;
+            }
             final String contentType = MimeTypes.getContentType(name, "text/plain");
             response.out.write(content.getBytes(getEncoding()));
             setContentTypeIfNotSet(response, contentType);

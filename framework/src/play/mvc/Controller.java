@@ -6,12 +6,15 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.Future;
 
+import org.apache.commons.javaflow.Continuation;
+import org.apache.commons.javaflow.bytecode.StackRecorder;
 import org.w3c.dom.Document;
 
 import play.Invoker.Suspend;
@@ -26,7 +29,12 @@ import play.classloading.enhancers.LocalvariablesNamesEnhancer.LocalVariablesSup
 import play.data.binding.Unbinder;
 import play.data.validation.Validation;
 import play.data.validation.ValidationPlugin;
-import play.exceptions.*;
+import play.exceptions.ContinuationsException;
+import play.exceptions.NoRouteFoundException;
+import play.exceptions.PlayException;
+import play.exceptions.TemplateNotFoundException;
+import play.exceptions.UnexpectedException;
+import play.libs.F;
 import play.libs.Time;
 import play.mvc.Http.Request;
 import play.mvc.Router.ActionDefinition;
@@ -54,10 +62,6 @@ import play.vfs.VirtualFile;
 
 import com.google.gson.JsonSerializer;
 import com.thoughtworks.xstream.XStream;
-import java.lang.reflect.Type;
-import org.apache.commons.javaflow.Continuation;
-import org.apache.commons.javaflow.bytecode.StackRecorder;
-import play.libs.F;
 
 /**
  * Application controller support: The controller receives input and initiates a response by making calls on model objects.
@@ -637,7 +641,7 @@ public class Controller implements ControllerSupport, LocalVariablesSupport {
         }
         renderTemplate(templateName, templateBinding);
     }
-
+    
     /**
      * Render a specific template.
      *
@@ -645,6 +649,17 @@ public class Controller implements ControllerSupport, LocalVariablesSupport {
      * @param args The template data.
      */
     protected static void renderTemplate(String templateName, Map<String,Object> args) {
+        renderTemplate(templateName, args, null);
+    }
+
+    /**
+     * Render a specific template.
+     *
+     * @param templateName The template name.
+     * @param args The template data.
+     * @param statusCode the status code to set on the response
+     */
+    protected static void renderTemplate(String templateName, Map<String,Object> args, Integer statusCode) {
         // Template datas
         Scope.RenderArgs templateBinding = Scope.RenderArgs.current();
         templateBinding.data.putAll(args);
@@ -655,7 +670,7 @@ public class Controller implements ControllerSupport, LocalVariablesSupport {
         templateBinding.put("errors", Validation.errors());
         try {
             Template template = TemplateLoader.load(template(templateName));
-            throw new RenderTemplate(template, templateBinding.data);
+            throw new RenderTemplate(template, templateBinding.data, statusCode);
         } catch (TemplateNotFoundException ex) {
             if (ex.isSourceAvailable()) {
                 throw ex;
