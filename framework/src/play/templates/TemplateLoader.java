@@ -190,7 +190,7 @@ public class TemplateLoader {
             
             //try to load the mobile multi-tenant template with the given prefix or the domain of the current request
             if (mobileTemplate) {
-	            if (tenant != null) {
+	            if (StringUtils.isNotEmpty(tenant)) {
 	                tf = vf.child(tenant + File.separator + mobilePrefix + File.separator + path);
 	                if (tf.exists()) {
 	                    template = TemplateLoader.load(tf);
@@ -200,7 +200,7 @@ public class TemplateLoader {
             }
             
             //try to load the full multi-tenant template with the given prefix or the domain of the current request
-            if (tenant != null) {
+            if (StringUtils.isNotEmpty(tenant)) {
                 tf = vf.child(tenant + File.separator + fullPrefix + File.separator + path);
                 if (tf.exists()) {
                     template = TemplateLoader.load(tf);
@@ -259,7 +259,7 @@ public class TemplateLoader {
      * @return The executable template
      */
     public static Template load(String path) {
-    	Http.Request currentRequest = Http.Request.current().get();
+    	Http.Request currentRequest = Http.Request.current();
         if (currentRequest != null) {
         	boolean isMobile = false;
         	Header userAgent = currentRequest.headers.get("user-agent");

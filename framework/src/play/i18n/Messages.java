@@ -4,6 +4,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
+
 import play.Logger;
 import play.Play;
 import play.data.binding.Binder;
@@ -82,30 +84,17 @@ public class Messages {
         }
         return result;
     }
-
-    public static String getMessage(String locale, Object key, Object... args) {
-        // Check if there is a plugin that handles translation
-        String message = Play.pluginCollection.getMessage(locale, key, args);
-
-        if(message != null) {
-            return message;
-        }
     
-        String value = null;
-        if( key == null ) {
-            return "";
-        }
-        
-        Http.Request currentRequest = Http.Request.current().get();
-        if (currentRequest != null) {
-        	String domain = currentRequest.domain;
-        	if (multiTenantLocales.containsKey(domain) && multiTenantLocales.get(domain).containsKey(locale)) {
-        		value = multiTenantLocales.get(domain).get(locale).getProperty(key.toString());
-        	}
-        	if (value == null && multiTenantDefaults.containsKey(domain)) {
-        		value = multiTenantDefaults.get(domain).getProperty(key.toString());
-        	}
-        }
+    public static String getMultiTenantMessage(String locale, String tenant, Object key, Object... args) {
+    	String value = null;
+    	if (StringUtils.isNotEmpty(tenant)) {
+	    	if (multiTenantLocales.containsKey(tenant) && multiTenantLocales.get(tenant).containsKey(locale)) {
+	    		value = multiTenantLocales.get(tenant).get(locale).getProperty(key.toString());
+	    	}
+	    	if (value == null && multiTenantDefaults.containsKey(tenant)) {
+	    		value = multiTenantDefaults.get(tenant).getProperty(key.toString());
+	    	}
+    	}
         if (value == null && locales.containsKey(locale)) {
             value = locales.get(locale).getProperty(key.toString());
         }
@@ -117,6 +106,23 @@ public class Messages {
         }
 
         return formatString(value, args);
+    }
+
+    public static String getMessage(String locale, Object key, Object... args) {
+        // Check if there is a plugin that handles translation
+        String message = Play.pluginCollection.getMessage(locale, key, args);
+
+        if(message != null) {
+            return message;
+        }
+    
+        if( key == null ) {
+            return "";
+        }
+        
+        String tenant = Http.Request.current() != null ? Http.Request.current().domain : null;
+        return getMultiTenantMessage(locale, tenant, key, args);
+        
     }
 
     public static String formatString(String value, Object... args) {
