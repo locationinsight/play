@@ -85,11 +85,22 @@ public class Messages {
         return result;
     }
     
+    private static String getLocaleCountry(String locale) {
+    	if (StringUtils.isEmpty(locale)) {
+    		return null;
+    	}
+    	int underscoreIndex = locale.indexOf("_");
+    	return underscoreIndex == -1 ? locale : locale.substring(0, underscoreIndex);
+    }
+    
     public static String getMultiTenantMessage(String locale, String tenant, Object key, Object... args) {
     	String value = null;
+    	String country = getLocaleCountry(locale);
     	if (StringUtils.isNotEmpty(tenant)) {
 	    	if (multiTenantLocales.containsKey(tenant) && multiTenantLocales.get(tenant).containsKey(locale)) {
 	    		value = multiTenantLocales.get(tenant).get(locale).getProperty(key.toString());
+	    	} else if (StringUtils.isNotEmpty(country) && !country.equals(locale) && multiTenantLocales.containsKey(tenant) && multiTenantLocales.get(tenant).containsKey(country)) {
+	    		value = multiTenantLocales.get(tenant).get(country).getProperty(key.toString());
 	    	}
 	    	if (value == null && multiTenantDefaults.containsKey(tenant)) {
 	    		value = multiTenantDefaults.get(tenant).getProperty(key.toString());
@@ -97,7 +108,9 @@ public class Messages {
     	}
         if (value == null && locales.containsKey(locale)) {
             value = locales.get(locale).getProperty(key.toString());
-        }
+        } else if (value == null && StringUtils.isNotEmpty(country) && !country.equals(locale) && locales.containsKey(country)) {
+            value = locales.get(country).getProperty(key.toString());
+    	}
         if (value == null) {
             value = defaults.getProperty(key.toString());
         }
