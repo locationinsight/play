@@ -169,7 +169,7 @@ public class Play {
     /**
      * Lazy load the templates on demand
      */
-    public static boolean lazyLoadTemplates = false;
+    public static boolean lazyLoadTemplates = true;
 
     /**
      * This is used as default encoding everywhere related to the web: request, response, WS
