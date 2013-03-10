@@ -33,6 +33,7 @@ import play.templates.TemplateLoader;
 import play.utils.HTTP;
 import play.utils.Utils;
 import play.vfs.VirtualFile;
+import play.utils.CookieDecoder;
 
 import java.io.*;
 import java.net.InetSocketAddress;
