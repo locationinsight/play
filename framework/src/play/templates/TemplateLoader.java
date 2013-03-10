@@ -28,24 +28,25 @@ public class TemplateLoader {
      */
     private static AtomicLong nextUniqueNumber = new AtomicLong(1000);//we start on 1000
     private static Map<String, String> templateFile2UniqueNumber = new HashMap<String, String>();
-    
+
     private static String mobilePrefix = Play.configuration.getProperty("deviceDetection.mobileSiteDirectoryPrefix");
     private static String fullPrefix = Play.configuration.getProperty("deviceDetection.fullSiteDirectoryPrefix");
-    
+
     private static String[] uaKeywords = {};
+
     static {
-    	String keywords = (String) Play.configuration.get("deviceDetection.mobileUserAgentKeywords");
-    	if (StringUtils.isNotEmpty(keywords)) {
-    		uaKeywords = keywords.split("\\|");
-    	}
+        String keywords = (String) Play.configuration.get("deviceDetection.mobileUserAgentKeywords");
+        if (StringUtils.isNotEmpty(keywords)) {
+            uaKeywords = keywords.split("\\|");
+        }
     }
-    
+
     /**
      * All loaded templates is cached in the templates-list using a key.
      * This key is included as part of the classname for the generated class for a specific template.
      * The key is included in the classname to make it possible to resolve the original template-file
      * from the classname, when creating cleanStackTrace
-     *
+     * <p/>
      * This method returns a unique representation of the path which is usable as part of a classname
      *
      * @param path
@@ -68,6 +69,7 @@ public class TemplateLoader {
 
     /**
      * Load a template from a virtual file
+     *
      * @param file A VirtualFile
      * @return The executable template
      */
@@ -87,7 +89,7 @@ public class TemplateLoader {
                     template.loadPrecompiled();
                     templates.put(key, template);
                     return template;
-                } catch(Exception e) {
+                } catch (Exception e) {
                     Logger.warn("Precompiled template %s not found, trying to load it dynamically...", file.relativePath());
                 }
             }
@@ -111,7 +113,8 @@ public class TemplateLoader {
 
     /**
      * Load a template from a String
-     * @param key A unique identifier for the template, used for retreiving a cached template
+     *
+     * @param key    A unique identifier for the template, used for retreiving a cached template
      * @param source The template source
      * @return A Template
      */
@@ -138,7 +141,8 @@ public class TemplateLoader {
     /**
      * Clean the cache for that key
      * Then load a template from a String
-     * @param key A unique identifier for the template, used for retreiving a cached template
+     *
+     * @param key    A unique identifier for the template, used for retreiving a cached template
      * @param source The template source
      * @return A Template
      */
@@ -149,6 +153,7 @@ public class TemplateLoader {
 
     /**
      * Load template from a String, but don't cache it
+     *
      * @param source The template source
      * @return A Template
      */
@@ -166,6 +171,7 @@ public class TemplateLoader {
 
     /**
      * Cleans the specified key from the cache
+     *
      * @param key The template key
      */
     public static void cleanCompiledCache(String key) {
@@ -174,63 +180,74 @@ public class TemplateLoader {
 
     /**
      * Load a template, checking for a multi-tenant template for looking for a default play app template
-     * @param path The path of the template (ex: Application/index.html)
-     * @param tenant the tenant to look for the view in for multi-tenancy
+     *
+     * @param path           The path of the template (ex: Application/index.html)
+     * @param tenant         the tenant to look for the view in for multi-tenancy
      * @param mobileTemplate if the template to be loaded is for mobile devices
      * @return The executable template
      */
     public static Template loadMultiTenant(String path, String tenant, boolean mobileTemplate) {
         Template template = null;
-        for (VirtualFile vf : Play.templatesPath) {
-            if (vf == null) {
-                continue;
-            }
+        VirtualFile tf = null;
 
-            VirtualFile tf = null;
-            
-            //try to load the mobile multi-tenant template with the given prefix or the domain of the current request
-            if (mobileTemplate) {
-	            if (StringUtils.isNotEmpty(tenant)) {
-	                tf = vf.child(tenant + File.separator + mobilePrefix + File.separator + path);
-	                if (tf.exists()) {
-	                    template = TemplateLoader.load(tf);
-	                    break;
-	                }
-	            }
-            }
-            
-            //try to load the full multi-tenant template with the given prefix or the domain of the current request
-            if (StringUtils.isNotEmpty(tenant)) {
-                tf = vf.child(tenant + File.separator + fullPrefix + File.separator + path);
+        //Hack for templates that supply a custom desktop, but not a custom mobile or vice-verse
+
+
+        //try to load the mobile multi-tenant template with the given prefix or the domain of the current request
+        if (mobileTemplate) {
+            for (VirtualFile vf : Play.templatesPath) {
+                if (vf == null) {
+                    continue;
+                }
+
+                if (StringUtils.isNotEmpty(tenant)) {
+                    tf = vf.child(tenant + File.separator + mobilePrefix + File.separator + path);
+                    if (tf.exists()) {
+                        template = TemplateLoader.load(tf);
+                        break;
+                    }
+                }
+
+
+                //try to load the mobile built-in template in the play project
+                tf = vf.child(mobilePrefix + File.separator + path);
                 if (tf.exists()) {
                     template = TemplateLoader.load(tf);
                     break;
                 }
             }
-
-            //try to load the mobile built-in template in the play project
-            if (mobileTemplate) { 
-            	tf = vf.child(mobilePrefix + File.separator + path);
-	            if (tf.exists()) {
-	                template = TemplateLoader.load(tf);
-	                break;
-	            }
-            }
-            
-            //try to load the full built-in template in the play project
-            tf = vf.child(fullPrefix + File.separator + path);
-            if (tf.exists()) {
-                template = TemplateLoader.load(tf);
-                break;
-            }
-            
-            tf = vf.child(path);
-            if (tf.exists()) {
-                template = TemplateLoader.load(tf);
-                break;
-            }
-            
         }
+
+        if (template == null) {
+            for (VirtualFile vf : Play.templatesPath) {
+                if (vf == null) {
+                    continue;
+                }
+                //try to load the full multi-tenant template with the given prefix or the domain of the current request
+                if (StringUtils.isNotEmpty(tenant)) {
+                    tf = vf.child(tenant + File.separator + fullPrefix + File.separator + path);
+                    if (tf.exists()) {
+                        template = TemplateLoader.load(tf);
+                        break;
+                    }
+                }
+
+                //try to load the full built-in template in the play project
+                tf = vf.child(fullPrefix + File.separator + path);
+                if (tf.exists()) {
+                    template = TemplateLoader.load(tf);
+                    break;
+                }
+
+                tf = vf.child(path);
+                if (tf.exists()) {
+                    template = TemplateLoader.load(tf);
+                    break;
+                }
+
+            }
+        }
+
         /*
         if (template == null) {
         //When using the old 'key = (file.relativePath().hashCode() + "").replace("-", "M");',
@@ -243,7 +260,7 @@ public class TemplateLoader {
          */
         //TODO: remove ?
         if (template == null) {
-            VirtualFile tf = Play.getVirtualFile(path);
+            tf = Play.getVirtualFile(path);
             if (tf != null && tf.exists()) {
                 template = TemplateLoader.load(tf);
             } else {
@@ -255,32 +272,33 @@ public class TemplateLoader {
 
     /**
      * Load a template
+     *
      * @param path The path of the template (ex: Application/index.html)
      * @return The executable template
      */
     public static Template load(String path) {
-    	Http.Request currentRequest = Http.Request.current();
+        Http.Request currentRequest = Http.Request.current();
         if (currentRequest != null) {
-        	boolean isMobile = false;
-        	Header userAgent = currentRequest.headers.get("user-agent");
-        	if (userAgent != null) {
-	        	String ua = userAgent.value().toLowerCase();
-				for (String keyword : uaKeywords) {
-					if (ua.contains(keyword)) {
-						isMobile = true;
-						break;
-					}
-				}
-        	}
-        	return loadMultiTenant(path, currentRequest.domain, isMobile);
+            boolean isMobile = false;
+            Header userAgent = currentRequest.headers.get("user-agent");
+            if (userAgent != null) {
+                String ua = userAgent.value().toLowerCase();
+                for (String keyword : uaKeywords) {
+                    if (ua.contains(keyword)) {
+                        isMobile = true;
+                        break;
+                    }
+                }
+            }
+            return loadMultiTenant(path, currentRequest.domain, isMobile);
         }
         return loadMultiTenant(path, null, false);
     }
-    
-    
-    
+
+
     /**
      * List all found templates
+     *
      * @return A list of executable templates
      */
     public static List<Template> getAllTemplate() {
