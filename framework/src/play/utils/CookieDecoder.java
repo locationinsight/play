@@ -121,7 +121,8 @@ public class CookieDecoder {
             String commentURL = null;
             String domain = null;
             String path = null;
-            int maxAge = Integer.MIN_VALUE;
+            // int maxAge = Integer.MIN_VALUE;
+            int maxAge = -1;//looks like older netty needed -1 here, so mimicing that behavior
             List<Integer> ports = new ArrayList<Integer>(2);
 
             for (int j = i + 1; j < names.size(); j++, i++) {
